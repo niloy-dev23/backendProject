@@ -3,6 +3,7 @@
 # ==========================================
 # Never commit your actual credentials or API keys.
 
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -10,10 +11,6 @@
 *.pem
 *.key
 *.cert
-
-# CRITICAL: Do NOT ignore the template file! 
-# Your teammates need this to see what variables to configure.
-!.env.example
 
 # ==========================================
 # 2. PACKAGE DEPENDENCIES
