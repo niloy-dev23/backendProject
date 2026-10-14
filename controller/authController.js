@@ -1,6 +1,6 @@
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const userModel = require('../models/userModel')
-const bcrypt = require('bcrypt')
+const generateToken = require('../helpers/tokenHelper')
 
 const registration = async (req, res)=>{
     const {username, email, password, profilePic, address, gender} = req.body
@@ -30,9 +30,8 @@ const registration = async (req, res)=>{
             message:"Password must be at least 8 characters long"
         })
     }
-    const hashedPassword = await bcrypt.hash(password, 10)
     const user = new userModel({
-        username, email, password: hashedPassword, profilePic, address, gender
+        username, email, password, profilePic, address, gender, emailVerificationToken:generateToken(userModel)
     })
     await user.save()
     res.status(201).json({
