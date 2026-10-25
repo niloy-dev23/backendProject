@@ -2,13 +2,19 @@ const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 
 const generateAuthToken = (user) => {
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET must be configured')
+    }
+
     const payload = {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        tokenUse: 'access'
     }
     return jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES
+        algorithm: 'HS256',
+        expiresIn: process.env.JWT_EXPIRES || '15m'
     })
 }
 

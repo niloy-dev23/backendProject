@@ -5,6 +5,8 @@ const {
     verifyEmail,
     resendVerification,
     login,
+    refreshAccessToken,
+    logout,
     forgotPassword,
     resetPassword,
     getMe
@@ -15,6 +17,8 @@ const getAll = require('../../controller/getAllUserController')
 
 router.post('/registration', registration)
 router.post('/login',limiter, login)
+router.post('/refresh', refreshAccessToken)
+router.post('/logout', logout)
 router.get('/verify-email', verifyEmail)
 router.post('/verify-email', verifyEmail)
 router.post('/resend-verification', resendVerification)

@@ -50,6 +50,14 @@ const userSchema = new Schema({
         type: Date,
         select: false
     },
+    refreshTokenHash: {
+        type: String,
+        select: false
+    },
+    refreshTokenExpiresAt: {
+        type: Date,
+        select: false
+    },
     role:{
         type:String,
         enum:['user', 'employee', 'admin'],
@@ -84,5 +92,7 @@ userSchema.methods.toSafeObject = function () {
         updatedAt: this.updatedAt
     }
 }
+
+userSchema.index({ refreshTokenHash: 1 }, { unique: true, sparse: true })
 
 module.exports = mongoose.model('User', userSchema)

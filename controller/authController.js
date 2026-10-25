@@ -20,17 +20,26 @@ const getPasswordResetExpiry = () => {
     return new Date(Date.now() + ms)
 }
 
+const getRefreshTokenExpiry = () => {
+    const configuredMs = process.env.REFRESH_TOKEN_EXPIRES_MS
+    const ms = configuredMs === undefined ? 7 * 24 * 60 * 60 * 1000 : Number(configuredMs)
+
+    if (!Number.isSafeInteger(ms) || ms <= 0) {
+        throw new Error('REFRESH_TOKEN_EXPIRES_MS must be a positive integer')
+    }
+
+    return new Date(Date.now() + ms)
+}
+
 const registration = async (req, res) => {
     try {
         const { username, email, password, profilePic, address, gender, role } = req.body
-
         if (!username || !email || !password || !gender) {
             return res.status(400).json({
                 success: false,
                 message: 'Username, email, password and gender are required'
             })
         }
-
         if (!emailRegex.test(email)) {
             return res.status(400).json({
                 success: false,
@@ -83,7 +92,9 @@ const registration = async (req, res) => {
                 username: user.username,
                 plainToken
             })
-        } catch (emailError) {
+        } 
+        
+        catch (emailError) {
             console.error('Failed to send verification email:', emailError.message)
             return res.status(201).json({
                 success: true,
@@ -255,14 +266,20 @@ const login = async (req, res) => {
             })
         }
 
-        const token = generateAuthToken(user)
+        const accessToken = generateAuthToken(user)
+        const { plainToken: refreshToken, hashedToken: refreshTokenHash } = generateSecureToken()
+        user.refreshTokenHash = refreshTokenHash
+        user.refreshTokenExpiresAt = getRefreshTokenExpiry()
+        await user.save()
 
         return res.status(200).json({
             success: true,
             message: 'Login successful',
             data: {
                 user: user.toSafeObject(),
-                token
+                accessToken,
+                token: accessToken,
+                refreshToken
             }
         })
     } catch (error) {
@@ -270,6 +287,125 @@ const login = async (req, res) => {
             success: false,
             message: 'Login failed',
             error: error.message
+        })
+    }
+}
+
+const refreshAccessToken = async (req, res) => {
+    try {
+        const { refreshToken } = req.body
+        if (typeof refreshToken !== 'string' || !/^[a-f0-9]{64}$/i.test(refreshToken)) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid or expired refresh token.'
+            })
+        }
+
+        const now = new Date()
+        const currentHash = hashToken(refreshToken)
+        const user = await userModel
+            .findOne({
+                refreshTokenHash: currentHash,
+                refreshTokenExpiresAt: { $gt: now },
+                isEmailVerified: true
+            })
+            .select('+refreshTokenHash +refreshTokenExpiresAt')
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid or expired refresh token.'
+            })
+        }
+
+        const accessToken = generateAuthToken(user)
+        const {
+            plainToken: nextRefreshToken,
+            hashedToken: nextRefreshTokenHash
+        } = generateSecureToken()
+        const refreshTokenExpiresAt = getRefreshTokenExpiry()
+
+        const rotatedUser = await userModel.findOneAndUpdate(
+            {
+                _id: user._id,
+                refreshTokenHash: currentHash,
+                refreshTokenExpiresAt: { $gt: new Date() },
+                isEmailVerified: true
+            },
+            {
+                $set: {
+                    refreshTokenHash: nextRefreshTokenHash,
+                    refreshTokenExpiresAt
+                }
+            },
+            { new: true }
+        )
+
+        if (!rotatedUser) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid or expired refresh token.'
+            })
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Access token refreshed successfully',
+            data: {
+                accessToken,
+                token: accessToken,
+                refreshToken: nextRefreshToken
+            }
+        })
+    } catch (error) {
+        console.error('Could not refresh access token:', error.message)
+        return res.status(500).json({
+            success: false,
+            message: 'Could not refresh access token'
+        })
+    }
+}
+
+const logout = async (req, res) => {
+    try {
+        const { refreshToken } = req.body
+        if (typeof refreshToken !== 'string' || !/^[a-f0-9]{64}$/i.test(refreshToken)) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid or expired refresh token.'
+            })
+        }
+
+        const user = await userModel.findOneAndUpdate(
+            {
+                refreshTokenHash: hashToken(refreshToken),
+                refreshTokenExpiresAt: { $gt: new Date() }
+            },
+            {
+                $unset: {
+                    refreshTokenHash: 1,
+                    refreshTokenExpiresAt: 1
+                }
+            },
+            { new: true }
+        )
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid or expired refresh token.'
+            })
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Logged out successfully'
+        })
+    } catch (error) {
+        console.error('Could not log out:', error.message)
+        return res.status(500).json({
+            success: false,
+            message: 'Could not log out'
         })
     }
 }
@@ -371,8 +507,7 @@ const resetPassword = async (req, res) => {
             .findOne({
                 passwordResetToken: hashed,
                 passwordResetTokenExpires: { $gt: new Date() }
-            })
-            .select('+passwordResetToken +passwordResetTokenExpires +password')
+            }).select('+passwordResetToken +passwordResetTokenExpires +password')
 
         if (!user) {
             return res.status(400).json({
@@ -389,7 +524,9 @@ const resetPassword = async (req, res) => {
         await userModel.findByIdAndUpdate(user._id, {
             $unset: {
                 passwordResetToken: 1,
-                passwordResetTokenExpires: 1
+                passwordResetTokenExpires: 1,
+                refreshTokenHash: 1,
+                refreshTokenExpiresAt: 1
             }
         })
 
@@ -419,6 +556,8 @@ module.exports = {
     verifyEmail,
     resendVerification,
     login,
+    refreshAccessToken,
+    logout,
     forgotPassword,
     resetPassword,
     getMe
