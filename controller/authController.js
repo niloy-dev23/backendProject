@@ -22,7 +22,7 @@ const getPasswordResetExpiry = () => {
 
 const registration = async (req, res) => {
     try {
-        const { username, email, password, profilePic, address, gender } = req.body
+        const { username, email, password, profilePic, address, gender, role } = req.body
 
         if (!username || !email || !password || !gender) {
             return res.status(400).json({

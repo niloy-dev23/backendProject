@@ -10,9 +10,11 @@ const {
     getMe
 } = require('../../controller/authController')
 const { protect } = require('../../middleware/authMiddleware')
+const limiter = require('../../middleware/limiter')
+const getAll = require('../../controller/getAllUserController')
 
 router.post('/registration', registration)
-router.post('/login', login)
+router.post('/login',limiter, login)
 router.get('/verify-email', verifyEmail)
 router.post('/verify-email', verifyEmail)
 router.post('/resend-verification', resendVerification)
@@ -33,5 +35,6 @@ router.get('/reset-password', (req, res) => {
 })
 router.post('/reset-password', resetPassword)
 router.get('/me', protect, getMe)
+router.get('/getAll', protect, getAll)
 
 module.exports = router

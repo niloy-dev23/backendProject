@@ -49,6 +49,11 @@ const userSchema = new Schema({
     passwordResetTokenExpires: {
         type: Date,
         select: false
+    },
+    role:{
+        type:String,
+        enum:['user', 'employee', 'admin'],
+        default:'user'
     }
 }, {
     timestamps: true
