@@ -109,4 +109,16 @@ const deleteUser = async (req, res) => {
 
 }
 
-module.exports = {getAllUser, getSingle, approveUser, deleteUser, disapproveUser}
+const updateUser = async (req, res) => {
+    const userId = req.params.id
+    const user = await userModel.findByIdAndUpdate({_id:userId}, {$set: req.body}, {
+        new:true, 
+        runValidators:true
+    })
+    res.status(200).json({
+        success:true,
+        message:"User Updated Successfully"
+    })
+}
+
+module.exports = {getAllUser, getSingle, approveUser, deleteUser, disapproveUser, updateUser}

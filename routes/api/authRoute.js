@@ -11,7 +11,7 @@ const {
     resetPassword,
     getMe
 } = require('../../controller/authController')
-const { protect } = require('../../middleware/authMiddleware')
+const { protect, isAdmin } = require('../../middleware/authMiddleware')
 const limiter = require('../../middleware/limiter')
 const userController = require('../../controller/getAllUserController')
 
@@ -40,8 +40,9 @@ router.get('/reset-password', (req, res) => {
 router.post('/reset-password', resetPassword)
 router.get('/me', protect, getMe)
 router.get('/getAll', protect, userController.getAll)
-router.patch('/approve/:id', protect, userController.approveUser)
-router.patch('/disapprove/:id', protect, userController.disapproveUser)
+router.patch('/approve/:id', isAdmin, userController.approveUser)
+router.patch('/disapprove/:id', isAdmin, userController.disapproveUser)
 router.get('/getSingle/:id', protect, userController.getSingleUser)
+router.patch('/update/:id', protect, userController.updateUser)
 
 module.exports = router
