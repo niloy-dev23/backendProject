@@ -13,7 +13,7 @@ const {
 } = require('../../controller/authController')
 const { protect } = require('../../middleware/authMiddleware')
 const limiter = require('../../middleware/limiter')
-const getAll = require('../../controller/getAllUserController')
+const userController = require('../../controller/getAllUserController')
 
 router.post('/registration', registration)
 router.post('/login',limiter, login)
@@ -39,6 +39,9 @@ router.get('/reset-password', (req, res) => {
 })
 router.post('/reset-password', resetPassword)
 router.get('/me', protect, getMe)
-router.get('/getAll', protect, getAll)
+router.get('/getAll', protect, userController.getAll)
+router.patch('/approve/:id', protect, userController.approveUser)
+router.patch('/disapprove/:id', protect, userController.disapproveUser)
+router.get('/getSingle/:id', protect, userController.getSingleUser)
 
 module.exports = router
