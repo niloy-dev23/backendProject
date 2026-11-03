@@ -1,24 +1,47 @@
 const userModel = require('../models/userModel')
 
 const getAllUser = async (req, res) => {
-    try {
-        const users = await userModel
-            .find({ _id: { $ne: req.user._id } })
-            .select('username email profilePic address gender isEmailVerified createdAt updatedAt')
-            .lean()
+
+    const search = req.query.search ? req.query.search.trim() : ""
+    const role = req.query.role ? req.query.role.trim() : ""
+
+
+    const filter = {
+        _id: { $ne: req.user._id}
+    }
+
+    if(search){
+        const searchRegex = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        filter.$or = [
+            { username: { $regex: searchRegex, $options: 'i' } }
+        ]
+    }
+    if(role){
+        const roleRegex = role.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        filter.$or = [
+            { role: { $regex: roleRegex, $options: 'i' } }
+        ]
+    }
+    const users = await userModel.find(filter)
+
+    // try {
+    //     const users = await userModel
+    //         .find({ _id: { $ne: req.user._id }, username: { $regex: search, $options: 'i' } })
+    //         .select('username email profilePic address gender isEmailVerified createdAt updatedAt')
+    //         .lean()
 
         return res.status(200).json({
             success: true,
-            message: 'All users fetched successfully',
+            message: 'Users searched successfully',
             data: users
         })
-    } catch (error) {
-        console.error('Failed to fetch users:', error.message)
-        return res.status(500).json({
-            success: false,
-            message: 'Error fetching users'
-        })
-    }
+    // } catch (error) {
+    //     console.error('Failed to fetch users:', error.message)
+    //     return res.status(500).json({
+    //         success: false,
+    //         message: 'Error fetching users'
+    //     })
+    // }
 }
 
 const getSingle =async (req, res)=>{
